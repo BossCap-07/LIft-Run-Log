@@ -12,14 +12,15 @@
 <title>Mass And Endurance</title>
 <style>
   :root{
-    --bg:#121316;
-    --bg-raised:#1B1D22;
-    --bg-sunken:#0D0E10;
-    --border:#2A2D34;
+    --bg:#000000;
+    --bg-raised:#141414;
+    --bg-sunken:#000000;
+    --border:#242424;
     --text:#F0F0EF;
     --text-dim:#8B8D97;
     --primary:#E14B3D;
     --secondary:#D9A441;
+    --tertiary:#E8823D;
     --untargeted:#33353C;
     --run:#4FB3A9;
     --danger:#E14B3D;
@@ -201,9 +202,10 @@
       <svg id="svg-back" viewBox="0 0 200 400"></svg>
     </div>
     <div class="legend">
-      <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>5+ sets</div>
-      <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>1-4 sets</div>
-      <div class="legend-item"><span class="dot" style="background:var(--untargeted)"></span>0 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>20+ sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--tertiary)"></span>12-19 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>8-11 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--untargeted)"></span>0-7 sets</div>
     </div>
 
     <div class="muscle-list" id="ov-muscle-list"></div>
@@ -530,9 +532,14 @@
   });
 
   // ---------- Render: Overview ----------
+  // Weekly set-volume bands, roughly following the minimum/moderate/high
+  // effective volume ranges commonly cited in strength training guidance.
+  // Below 8 sets/week reads as gray since it's below what's usually
+  // considered a meaningful weekly dose for a muscle group.
   function muscleColor(count){
-    if(count === 0) return 'var(--untargeted)';
-    if(count < 5) return 'var(--secondary)';
+    if(count < 8) return 'var(--untargeted)';
+    if(count < 12) return 'var(--secondary)';
+    if(count < 20) return 'var(--tertiary)';
     return 'var(--primary)';
   }
   function weeklySetsByMuscle(){
