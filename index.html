@@ -542,6 +542,13 @@
     if(count < 20) return 'var(--tertiary)';
     return 'var(--primary)';
   }
+  // Used for a single day's numbers, which are naturally much smaller than a
+  // week's total, so the weekly bands above would show almost everything gray.
+  function dayMuscleColor(count){
+    if(count === 0) return 'var(--untargeted)';
+    if(count < 5) return 'var(--secondary)';
+    return 'var(--primary)';
+  }
   function weeklySetsByMuscle(){
     const counts = {};
     MUSCLES.forEach(m=>counts[m]=0);
@@ -623,7 +630,8 @@
     `).join('');
   }
 
-  function bodySvg(view, counts){
+  function bodySvg(view, counts, colorFn){
+    colorFn = colorFn || muscleColor;
     // view: 'front' or 'back'
     const gray = 'var(--untargeted)';
     const stroke = 'var(--bg)';
@@ -639,8 +647,8 @@
       return `<text x="${x}" y="${y}" font-size="${size||9}" text-anchor="middle" dominant-baseline="middle" fill="#fff" stroke="rgba(0,0,0,0.55)" stroke-width="0.6" paint-order="stroke" font-weight="600">${count}</text>`;
     }
     const shoulders = `
-      <ellipse cx="62" cy="72" rx="14" ry="12" fill="${muscleColor(counts.shoulders)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-15 62 72)"/>
-      <ellipse cx="138" cy="72" rx="14" ry="12" fill="${muscleColor(counts.shoulders)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(15 138 72)"/>
+      <ellipse cx="62" cy="72" rx="14" ry="12" fill="${colorFn(counts.shoulders)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-15 62 72)"/>
+      <ellipse cx="138" cy="72" rx="14" ry="12" fill="${colorFn(counts.shoulders)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(15 138 72)"/>
       ${label(62,72,counts.shoulders,8)}
       ${label(138,72,counts.shoulders,8)}
     `;
@@ -658,26 +666,26 @@
     `;
     if(view === 'front'){
       const chest = `
-        <path d="M72,84 C82,76 96,77 100,86 C104,77 118,76 128,84 C132,96 128,112 100,116 C72,112 68,96 72,84 Z" fill="${muscleColor(counts.chest)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M72,84 C82,76 96,77 100,86 C104,77 118,76 128,84 C132,96 128,112 100,116 C72,112 68,96 72,84 Z" fill="${colorFn(counts.chest)}" stroke="${stroke}" stroke-width="${sw}"/>
         <line x1="100" y1="86" x2="100" y2="114" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/>
         ${label(100,98,counts.chest)}
       `;
       const abs = `
-        <path d="M80,120 C78,138 78,156 82,170 L118,170 C122,156 122,138 120,120 C110,124 90,124 80,120 Z" fill="${muscleColor(counts.abs)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M80,120 C78,138 78,156 82,170 L118,170 C122,156 122,138 120,120 C110,124 90,124 80,120 Z" fill="${colorFn(counts.abs)}" stroke="${stroke}" stroke-width="${sw}"/>
         <line x1="100" y1="122" x2="100" y2="170" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/>
         <line x1="82" y1="138" x2="118" y2="138" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/>
         <line x1="82" y1="156" x2="118" y2="156" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/>
         ${label(100,148,counts.abs)}
       `;
       const biceps = `
-        <ellipse cx="45" cy="108" rx="12" ry="27" fill="${muscleColor(counts.biceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(10 45 108)"/>
-        <ellipse cx="155" cy="108" rx="12" ry="27" fill="${muscleColor(counts.biceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-10 155 108)"/>
+        <ellipse cx="45" cy="108" rx="12" ry="27" fill="${colorFn(counts.biceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(10 45 108)"/>
+        <ellipse cx="155" cy="108" rx="12" ry="27" fill="${colorFn(counts.biceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-10 155 108)"/>
         ${label(45,108,counts.biceps,8)}
         ${label(155,108,counts.biceps,8)}
       `;
       const quads = `
-        <ellipse cx="76" cy="224" rx="18" ry="50" fill="${muscleColor(counts.quads)}" stroke="${stroke}" stroke-width="${sw}"/>
-        <ellipse cx="124" cy="224" rx="18" ry="50" fill="${muscleColor(counts.quads)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="76" cy="224" rx="18" ry="50" fill="${colorFn(counts.quads)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="124" cy="224" rx="18" ry="50" fill="${colorFn(counts.quads)}" stroke="${stroke}" stroke-width="${sw}"/>
         ${label(76,224,counts.quads)}
         ${label(124,224,counts.quads)}
       `;
@@ -688,35 +696,35 @@
       return head+torsoBridge+shoulders+chest+abs+biceps+forearms+quads+shins+hands+feet;
     }else{
       const traps = `
-        <path d="M88,58 C72,64 66,84 76,96 C86,102 114,102 124,96 C134,84 128,64 112,58 C104,54 96,54 88,58 Z" fill="${muscleColor(counts.traps)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M88,58 C72,64 66,84 76,96 C86,102 114,102 124,96 C134,84 128,64 112,58 C104,54 96,54 88,58 Z" fill="${colorFn(counts.traps)}" stroke="${stroke}" stroke-width="${sw}"/>
         ${label(100,78,counts.traps,8)}
       `;
       const back = `
-        <path d="M70,86 C60,92 56,120 62,144 C68,150 78,148 82,140 C86,120 84,100 78,88 Z" fill="${muscleColor(counts.back)}" stroke="${stroke}" stroke-width="${sw}"/>
-        <path d="M130,86 C140,92 144,120 138,144 C132,150 122,148 118,140 C114,120 116,100 122,88 Z" fill="${muscleColor(counts.back)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M70,86 C60,92 56,120 62,144 C68,150 78,148 82,140 C86,120 84,100 78,88 Z" fill="${colorFn(counts.back)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M130,86 C140,92 144,120 138,144 C132,150 122,148 118,140 C114,120 116,100 122,88 Z" fill="${colorFn(counts.back)}" stroke="${stroke}" stroke-width="${sw}"/>
         <line x1="100" y1="86" x2="100" y2="146" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/>
         ${label(66,116,counts.back,8)}
         ${label(134,116,counts.back,8)}
       `;
       const triceps = `
-        <ellipse cx="45" cy="108" rx="12" ry="27" fill="${muscleColor(counts.triceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(10 45 108)"/>
-        <ellipse cx="155" cy="108" rx="12" ry="27" fill="${muscleColor(counts.triceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-10 155 108)"/>
+        <ellipse cx="45" cy="108" rx="12" ry="27" fill="${colorFn(counts.triceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(10 45 108)"/>
+        <ellipse cx="155" cy="108" rx="12" ry="27" fill="${colorFn(counts.triceps)}" stroke="${stroke}" stroke-width="${sw}" transform="rotate(-10 155 108)"/>
         ${label(45,108,counts.triceps,8)}
         ${label(155,108,counts.triceps,8)}
       `;
       const glutes = `
-        <path d="M72,158 C68,150 82,146 100,148 C118,146 132,150 128,158 C132,172 118,182 100,182 C82,182 68,172 72,158 Z" fill="${muscleColor(counts.glutes)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <path d="M72,158 C68,150 82,146 100,148 C118,146 132,150 128,158 C132,172 118,182 100,182 C82,182 68,172 72,158 Z" fill="${colorFn(counts.glutes)}" stroke="${stroke}" stroke-width="${sw}"/>
         ${label(100,165,counts.glutes,8)}
       `;
       const hamstrings = `
-        <ellipse cx="76" cy="224" rx="18" ry="50" fill="${muscleColor(counts.hamstrings)}" stroke="${stroke}" stroke-width="${sw}"/>
-        <ellipse cx="124" cy="224" rx="18" ry="50" fill="${muscleColor(counts.hamstrings)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="76" cy="224" rx="18" ry="50" fill="${colorFn(counts.hamstrings)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="124" cy="224" rx="18" ry="50" fill="${colorFn(counts.hamstrings)}" stroke="${stroke}" stroke-width="${sw}"/>
         ${label(76,224,counts.hamstrings)}
         ${label(124,224,counts.hamstrings)}
       `;
       const calves = `
-        <ellipse cx="77" cy="318" rx="11" ry="36" fill="${muscleColor(counts.calves)}" stroke="${stroke}" stroke-width="${sw}"/>
-        <ellipse cx="123" cy="318" rx="11" ry="36" fill="${muscleColor(counts.calves)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="77" cy="318" rx="11" ry="36" fill="${colorFn(counts.calves)}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="123" cy="318" rx="11" ry="36" fill="${colorFn(counts.calves)}" stroke="${stroke}" stroke-width="${sw}"/>
         ${label(77,318,counts.calves,8)}
         ${label(123,318,counts.calves,8)}
       `;
@@ -1101,8 +1109,8 @@
         <div class="detail-stat"><div class="num">${totalReps}</div><div class="label">Total reps</div></div>
       </div>
       <div class="diagrams" style="margin-top:4px;">
-        <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('front', counts)}</svg>
-        <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('back', counts)}</svg>
+        <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('front', counts, dayMuscleColor)}</svg>
+        <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('back', counts, dayMuscleColor)}</svg>
       </div>
       <div class="section-label" style="margin-top:16px;">Exercises</div>
       ${exList}
