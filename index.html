@@ -64,6 +64,13 @@
   .stat .unit{font-size:0.95rem;color:var(--text-dim);font-weight:500;margin-left:4px;}
   .stat .label{font-size:0.78rem;color:var(--text-dim);margin-top:2px;}
 
+  .hero-stats-header{display:flex;justify-content:flex-end;margin-bottom:6px;}
+  .hero-stat{background:var(--bg-raised);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;}
+  .hero-stat .hero-num{font-size:2.1rem;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;}
+  .hero-stat .hero-unit{font-size:1rem;color:var(--text-dim);font-weight:500;margin-left:6px;}
+  .hero-stat .hero-sub{font-size:0.8rem;color:var(--text-dim);margin-top:3px;}
+  .hero-stat .hero-label{font-size:0.78rem;color:var(--text-dim);margin-top:8px;}
+
   .week-label{font-size:0.82rem;color:var(--text-dim);margin-bottom:10px;}
 
   .diagrams{display:flex;justify-content:center;gap:18px;margin:10px 0 16px;}
@@ -185,16 +192,10 @@
   <!-- OVERVIEW -->
   <div class="panel active" id="panel-overview">
     <div class="week-label" id="ov-week-label"></div>
-    <div class="stat-row">
-      <div class="stat">
-        <div><span class="num" id="ov-km">0</span><span class="unit">km</span></div>
-        <div class="label">Ran this week</div>
-      </div>
-      <div class="stat">
-        <div><span class="num" id="ov-sets">0</span><span class="unit">sets</span></div>
-        <div class="label">Lifted this week</div>
-      </div>
+    <div class="hero-stats-header">
+      <button class="btn-ghost" id="swap-order-btn">Swap order</button>
     </div>
+    <div id="hero-stats"></div>
 
     <div class="section-label">Muscles worked this week</div>
     <div class="diagrams">
@@ -202,10 +203,10 @@
       <svg id="svg-back" viewBox="0 0 200 400"></svg>
     </div>
     <div class="legend">
-      <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>20+ sets</div>
-      <div class="legend-item"><span class="dot" style="background:var(--tertiary)"></span>12-19 sets</div>
-      <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>8-11 sets</div>
-      <div class="legend-item"><span class="dot" style="background:var(--untargeted)"></span>0-7 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>15+ sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--tertiary)"></span>9-14 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>6-8 sets</div>
+      <div class="legend-item"><span class="dot" style="background:var(--untargeted)"></span>0-5 sets</div>
     </div>
 
     <div class="muscle-list" id="ov-muscle-list"></div>
@@ -226,6 +227,12 @@
 
     <div class="section-label" style="margin-top:16px;">Distance by zone</div>
     <div class="muscle-list" id="period-zone-list"></div>
+
+    <div class="hr-toggle-row" style="margin-top:16px;">
+      <span>Show week-by-week breakdown</span>
+      <button class="toggle-switch" id="weekly-breakdown-toggle"><span class="knob"></span></button>
+    </div>
+    <div id="period-weekly-list" style="display:none;"></div>
   </div>
 
   <!-- RUN -->
@@ -424,6 +431,10 @@
   };
 
   const BODYPART_TO_MUSCLE = {Chest:"chest",Back:"back",Traps:"traps",Shoulders:"shoulders",Biceps:"biceps",Triceps:"triceps",Core:"abs"};
+  const BODY_PART_MUSCLES = {
+    Chest:["chest"], Back:["back"], Traps:["traps"], Shoulders:["shoulders"],
+    Biceps:["biceps"], Triceps:["triceps"], Legs:["quads","hamstrings","glutes","calves"], Core:["abs"]
+  };
   const LEG_MUSCLES = ["quads","hamstrings","glutes","calves"];
 
   function lmuscles(l){
@@ -457,7 +468,7 @@
   // ---------- State ----------
   let runs = [];
   let lifts = [];
-  let settings = {maxHR:null, showHR:true};
+  let settings = {maxHR:null, showHR:true, overviewOrder:'run', showWeeklyBreakdown:false};
   let selectedRunZone = null;
   let selectedPeriod = new Date().getMonth(); // 0-11, or 'ytd'
   let openDay = null;
@@ -476,8 +487,8 @@
     }catch(e){ lifts = []; }
     try{
       const s = localStorage.getItem('settings');
-      settings = s ? Object.assign({maxHR:null, showHR:true}, JSON.parse(s)) : {maxHR:null, showHR:true};
-    }catch(e){ settings = {maxHR:null, showHR:true}; }
+      settings = s ? Object.assign({maxHR:null, showHR:true, overviewOrder:'run', showWeeklyBreakdown:false}, JSON.parse(s)) : {maxHR:null, showHR:true, overviewOrder:'run', showWeeklyBreakdown:false};
+    }catch(e){ settings = {maxHR:null, showHR:true, overviewOrder:'run', showWeeklyBreakdown:false}; }
     renderAll();
   }
   async function saveRuns(){
@@ -532,14 +543,12 @@
   });
 
   // ---------- Render: Overview ----------
-  // Weekly set-volume bands, roughly following the minimum/moderate/high
-  // effective volume ranges commonly cited in strength training guidance.
-  // Below 8 sets/week reads as gray since it's below what's usually
-  // considered a meaningful weekly dose for a muscle group.
+  // Weekly set-volume bands, scaled so red starts at 15 sets/week, with the
+  // lower bands compressed proportionally from the old 0-7/8-11/12-19 split.
   function muscleColor(count){
-    if(count < 8) return 'var(--untargeted)';
-    if(count < 12) return 'var(--secondary)';
-    if(count < 20) return 'var(--tertiary)';
+    if(count < 6) return 'var(--untargeted)';
+    if(count < 9) return 'var(--secondary)';
+    if(count < 15) return 'var(--tertiary)';
     return 'var(--primary)';
   }
   // Used for a single day's numbers, which are naturally much smaller than a
@@ -591,6 +600,39 @@
     });
     return zk;
   }
+  function setsInRange(start, end){
+    return lifts.filter(l=>dateInRange(l.date,start,end)).reduce((a,l)=>a+Number(l.sets),0);
+  }
+  function weeksOverlapping(start, end){
+    const weeks = [];
+    let cursor = getWeekStart(start);
+    while(cursor <= end){
+      const wEnd = getWeekEnd(cursor);
+      weeks.push({start: new Date(cursor), end: wEnd});
+      cursor = new Date(cursor);
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return weeks;
+  }
+  function renderWeeklyBreakdown(periodStart, periodEnd){
+    const container = document.getElementById('period-weekly-list');
+    if(!settings.showWeeklyBreakdown){ container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    const weeks = weeksOverlapping(periodStart, periodEnd);
+    const fmt = d => d.toLocaleDateString(undefined,{month:'short', day:'numeric'});
+    container.innerHTML = weeks.map(w=>`
+      <div class="muscle-row">
+        <span class="m-name">${fmt(w.start)} to ${fmt(w.end)}</span>
+        <span class="m-count">${kmInRange(w.start,w.end).toFixed(1)} km, ${setsInRange(w.start,w.end)} sets</span>
+      </div>
+    `).join('');
+  }
+  document.getElementById('weekly-breakdown-toggle').addEventListener('click', ()=>{
+    settings.showWeeklyBreakdown = !settings.showWeeklyBreakdown;
+    saveSettings();
+    document.getElementById('weekly-breakdown-toggle').classList.toggle('on', settings.showWeeklyBreakdown);
+    renderPeriodTotals();
+  });
   function renderPeriodTotals(){
     const chipsEl = document.getElementById('period-chips');
     chipsEl.innerHTML = MONTH_NAMES.map((m,i)=>`<button class="chip period-chip${selectedPeriod===i?' selected':''}" data-period="${i}">${m}</button>`).join('')
@@ -606,7 +648,7 @@
     const {start, end} = getPeriodRange(selectedPeriod);
     const km = kmInRange(start, end);
     const counts = setsByMuscleInRange(start, end);
-    const totalSets = MUSCLES.reduce((a,m)=>a+counts[m],0);
+    const totalSets = setsInRange(start, end);
     const label = selectedPeriod === 'ytd' ? 'Year to date' : (MONTH_NAMES[selectedPeriod] + ' ' + new Date().getFullYear());
 
     document.getElementById('period-km').textContent = km.toFixed(1);
@@ -614,7 +656,8 @@
     document.getElementById('period-km-label').textContent = label;
     document.getElementById('period-sets-label').textContent = label;
 
-    document.getElementById('period-muscle-list').innerHTML = MUSCLES.map(m=>`
+    const sortedPeriodMuscles = MUSCLES.slice().sort((a,b)=>counts[b]-counts[a]);
+    document.getElementById('period-muscle-list').innerHTML = sortedPeriodMuscles.map(m=>`
       <div class="muscle-row">
         <span class="m-name">${MUSCLE_LABEL[m]}</span>
         <span class="m-count">${counts[m]}</span>
@@ -628,6 +671,9 @@
         <span class="m-count">${zoneKm[z.zone].toFixed(1)} km</span>
       </div>
     `).join('');
+
+    document.getElementById('weekly-breakdown-toggle').classList.toggle('on', !!settings.showWeeklyBreakdown);
+    renderWeeklyBreakdown(start, end);
   }
 
   function bodySvg(view, counts, colorFn){
@@ -734,17 +780,20 @@
 
   function renderOverview(){
     document.getElementById('ov-week-label').textContent = formatWeekRange();
-    const weekKm = runs.filter(r=>inThisWeek(r.date)).reduce((a,r)=>a+Number(r.km),0);
-    document.getElementById('ov-km').textContent = weekKm.toFixed(1);
-    const counts = weeklySetsByMuscle();
-    const totalSets = MUSCLES.reduce((a,m)=>a+counts[m],0);
-    document.getElementById('ov-sets').textContent = totalSets;
+    const weekRuns = runs.filter(r=>inThisWeek(r.date));
+    const weekKm = weekRuns.reduce((a,r)=>a+Number(r.km),0);
+    const weekLifts = lifts.filter(l=>inThisWeek(l.date));
+    const totalSets = weekLifts.reduce((a,l)=>a+Number(l.sets),0);
+    const totalReps = weekLifts.reduce((a,l)=>a+Number(l.sets)*Number(l.reps),0);
+    renderHeroStats(weekKm, totalSets, totalReps);
 
+    const counts = weeklySetsByMuscle();
     document.getElementById('svg-front').innerHTML = bodySvg('front', counts);
     document.getElementById('svg-back').innerHTML = bodySvg('back', counts);
 
     const list = document.getElementById('ov-muscle-list');
-    list.innerHTML = MUSCLES.map(m=>`
+    const sortedMuscles = MUSCLES.slice().sort((a,b)=>counts[b]-counts[a]);
+    list.innerHTML = sortedMuscles.map(m=>`
       <div class="muscle-row">
         <span class="m-name"><span class="dot" style="background:${muscleColor(counts[m])}"></span>${MUSCLE_LABEL[m]}</span>
         <span class="m-count">${counts[m]}</span>
@@ -753,6 +802,29 @@
 
     renderPeriodTotals();
   }
+
+  function renderHeroStats(weekKm, totalSets, totalReps){
+    const runBlock = `
+      <div class="hero-stat">
+        <div><span class="hero-num">${weekKm.toFixed(1)}</span><span class="hero-unit">km</span></div>
+        <div class="hero-label">Ran this week</div>
+      </div>
+    `;
+    const liftBlock = `
+      <div class="hero-stat">
+        <div><span class="hero-num">${totalSets}</span><span class="hero-unit">sets</span></div>
+        <div class="hero-sub">${totalReps} total reps</div>
+        <div class="hero-label">Lifted this week</div>
+      </div>
+    `;
+    const container = document.getElementById('hero-stats');
+    container.innerHTML = settings.overviewOrder === 'lift' ? (liftBlock + runBlock) : (runBlock + liftBlock);
+  }
+  document.getElementById('swap-order-btn').addEventListener('click', ()=>{
+    settings.overviewOrder = settings.overviewOrder === 'lift' ? 'run' : 'lift';
+    saveSettings();
+    renderOverview();
+  });
 
   // ---------- Heart rate zones UI ----------
   function renderZoneTable(){
@@ -938,7 +1010,10 @@
   // ---------- Render: Lift ----------
   function renderBodyPartGrid(){
     const grid = document.getElementById('bodypart-grid');
-    grid.innerHTML = BODY_PARTS.map(bp=>`<button class="chip" data-bp="${bp}">${bp}</button>`).join('');
+    const weekCounts = weeklySetsByMuscle();
+    const bodyPartTotal = bp => BODY_PART_MUSCLES[bp].reduce((a,m)=>a+(weekCounts[m]||0), 0);
+    const ordered = BODY_PARTS.slice().sort((a,b)=> bodyPartTotal(b) - bodyPartTotal(a));
+    grid.innerHTML = ordered.map(bp=>`<button class="chip" data-bp="${bp}">${bp}</button>`).join('');
     grid.querySelectorAll('.chip').forEach(chip=>{
       chip.addEventListener('click', ()=>{
         selectedBodyPart = chip.dataset.bp;
@@ -1051,6 +1126,7 @@
     showLogStep();
     renderLiftList();
     renderOverview();
+    renderBodyPartGrid();
   });
 
   function renderLiftList(){
@@ -1112,6 +1188,11 @@
         <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('front', counts, dayMuscleColor)}</svg>
         <svg viewBox="0 0 200 400" style="width:100%;max-width:130px;height:auto;">${bodySvg('back', counts, dayMuscleColor)}</svg>
       </div>
+      <div class="legend">
+        <div class="legend-item"><span class="dot" style="background:var(--primary)"></span>5+ sets</div>
+        <div class="legend-item"><span class="dot" style="background:var(--secondary)"></span>1-4 sets</div>
+        <div class="legend-item"><span class="dot" style="background:var(--untargeted)"></span>0 sets</div>
+      </div>
       <div class="section-label" style="margin-top:16px;">Exercises</div>
       ${exList}
     `);
@@ -1129,6 +1210,7 @@
         lifts = lifts.filter(l=>l.id !== id);
         saveLifts();
         renderLiftList();
+        renderBodyPartGrid();
         if(openDay){
           const stillHasEntries = lifts.some(l=>new Date(l.date).toDateString()===openDay);
           if(stillHasEntries){ openLiftDayDetail(openDay); } else { closeDetail(); openDay = null; }
